@@ -1,11 +1,27 @@
 <!--
 ================================================================
   DAEMON RIFT 廃都の悪魔
-  Version : 0.3.3
+  Version : 0.4.1
   Updated : 2026-03-20
   Author  : ののやま
 ================================================================
   CHANGELOG
+  v0.4.1 (2026-03-20)
+    - SKILLモジュール追加
+        スキルマスター定義（37スキル: attack/heal/buff/debuff/special）
+        SKILL.activate(): 発動・ダメージ計算・属性相性・デバフ処理
+        SKILL.inheritSkill(): 合体時スキル継承（スキル石拡張ポイント）
+        SKILL.describe(): UIツールチップ用説明取得
+    - BATTLE.skill() を SKILL.activate() 経由に統一
+    - FUSION.execute() のスキル継承を SKILL.inheritSkill() 経由に統一
+  v0.4.0 (2026-03-20)
+    - 悪魔データ拡充: 10体 → 25体
+        C: ピクシー/スライム/コボルド/ジャックランタン/ゾンビ/インプ/ゴースト/マンドラゴラ
+        B: シャドウ/ケルベロス/メデューサ/サキュバス/タコマ/フェンリル/ヴァルキリー/ナーガ
+        A: アスタロト/セラフ/バアル/リリス/ガルーダ/ラミア
+        S: ルシファー/ミカエル/ティアマト
+    - 種族追加: 竜神 / 魔王
+    - 合体テーブル拡充: 8 → 30パターン（同種族合体・上位合体含む）
   v0.3.3 (2026-03-20)
     - AUDIOモジュール追加（Web Audio API 手続き型生成）
         BGM: 探索（ドローン）/ 戦闘（通常・ボス）
@@ -51,7 +67,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="application-name" content="DAEMON RIFT">
-<meta name="version" content="0.3.3">
+<meta name="version" content="0.4.1">
 <meta name="author" content="ののやま">
 <title>DAEMON RIFT</title>
 <style>
@@ -355,7 +371,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 // [BLOCK: META] バージョン情報
 // HTMLコメントヘッダー / metaタグ / タイトル画面 の3点と同期させること
 // ================================================================
-const APP_VERSION = '0.3.3';
+const APP_VERSION = '0.4.1';
 const APP_NAME    = 'DAEMON RIFT';
 
 // ================================================================
@@ -365,18 +381,39 @@ const APP_NAME    = 'DAEMON RIFT';
 
 // 悪魔マスターデータ — Phase 4 で 20 体以上に拡充予定
 const DEMON_MASTER = [
-  { id:1,  name:"ピクシー",        race:"妖精",   attr:"氷", emoji:"🧚", lv:1,  hp:30,  atk:8,  def:5,  spd:12, skills:["ブフ"],               rare:"C" },
-  { id:2,  name:"スライム",        race:"妖精",   attr:"物", emoji:"🫧", lv:1,  hp:25,  atk:6,  def:8,  spd:8,  skills:["たたく"],             rare:"C" },
-  { id:3,  name:"コボルド",        race:"妖精",   attr:"物", emoji:"🐺", lv:2,  hp:35,  atk:10, def:6,  spd:10, skills:["噛みつき"],           rare:"C" },
-  { id:4,  name:"ジャックランタン",race:"鬼神",   attr:"炎", emoji:"🎃", lv:3,  hp:45,  atk:12, def:7,  spd:9,  skills:["アギ"],               rare:"C" },
-  { id:5,  name:"ゾンビ",          race:"死霊",   attr:"呪", emoji:"🧟", lv:2,  hp:50,  atk:9,  def:10, spd:5,  skills:["腐敗"],               rare:"C" },
-  { id:6,  name:"シャドウ",        race:"堕天使", attr:"呪", emoji:"👤", lv:4,  hp:40,  atk:14, def:6,  spd:14, skills:["呪縛"],               rare:"B" },
-  { id:7,  name:"ケルベロス",      race:"幻魔",   attr:"炎", emoji:"🐕", lv:8,  hp:80,  atk:22, def:14, spd:11, skills:["アギラオ","噛みつき"],rare:"B" },
-  { id:8,  name:"メデューサ",      race:"幻魔",   attr:"氷", emoji:"🐍", lv:7,  hp:70,  atk:18, def:12, spd:13, skills:["石化眼","ブフーラ"],  rare:"B" },
-  { id:9,  name:"アスタロト",      race:"堕天使", attr:"呪", emoji:"👑", lv:12, hp:110, atk:30, def:18, spd:10, skills:["メギド","混乱"],      rare:"A" },
-  { id:10, name:"セラフ",          race:"天使",   attr:"電", emoji:"😇", lv:10, hp:90,  atk:25, def:20, spd:15, skills:["ジオ","回復"],        rare:"A" },
-];
+  // ── C ランク（フロア1〜10帯）──
+  { id:1,  name:"ピクシー",        race:"妖精",   attr:"氷", emoji:"🧚", lv:1,  hp:30,  atk:8,  def:5,  spd:12, skills:["ブフ"],                rare:"C" },
+  { id:2,  name:"スライム",        race:"妖精",   attr:"物", emoji:"🫧", lv:1,  hp:25,  atk:6,  def:8,  spd:8,  skills:["たたく"],              rare:"C" },
+  { id:3,  name:"コボルド",        race:"妖精",   attr:"物", emoji:"🐺", lv:2,  hp:35,  atk:10, def:6,  spd:10, skills:["噛みつき"],            rare:"C" },
+  { id:4,  name:"ジャックランタン",race:"鬼神",   attr:"炎", emoji:"🎃", lv:3,  hp:45,  atk:12, def:7,  spd:9,  skills:["アギ"],                rare:"C" },
+  { id:5,  name:"ゾンビ",          race:"死霊",   attr:"呪", emoji:"🧟", lv:2,  hp:50,  atk:9,  def:10, spd:5,  skills:["腐敗"],                rare:"C" },
+  { id:11, name:"インプ",          race:"鬼神",   attr:"炎", emoji:"😈", lv:2,  hp:30,  atk:11, def:4,  spd:13, skills:["火炎"],                rare:"C" },
+  { id:12, name:"ゴースト",        race:"死霊",   attr:"呪", emoji:"👻", lv:3,  hp:40,  atk:8,  def:5,  spd:15, skills:["呪い"],                rare:"C" },
+  { id:13, name:"マンドラゴラ",    race:"妖精",   attr:"物", emoji:"🌿", lv:4,  hp:55,  atk:10, def:12, spd:6,  skills:["根縛り"],              rare:"C" },
 
+  // ── B ランク（フロア11〜30帯）──
+  { id:6,  name:"シャドウ",        race:"堕天使", attr:"呪", emoji:"👤", lv:4,  hp:40,  atk:14, def:6,  spd:14, skills:["呪縛"],                rare:"B" },
+  { id:7,  name:"ケルベロス",      race:"幻魔",   attr:"炎", emoji:"🐕", lv:8,  hp:80,  atk:22, def:14, spd:11, skills:["アギラオ","噛みつき"], rare:"B" },
+  { id:8,  name:"メデューサ",      race:"幻魔",   attr:"氷", emoji:"🐍", lv:7,  hp:70,  atk:18, def:12, spd:13, skills:["石化眼","ブフーラ"],   rare:"B" },
+  { id:14, name:"サキュバス",      race:"堕天使", attr:"呪", emoji:"🦇", lv:6,  hp:60,  atk:16, def:8,  spd:16, skills:["魅了","暗黒"],         rare:"B" },
+  { id:15, name:"タコマ",          race:"幻魔",   attr:"電", emoji:"🐙", lv:7,  hp:75,  atk:20, def:11, spd:9,  skills:["稲妻触手","ジオ"],     rare:"B" },
+  { id:16, name:"フェンリル",      race:"幻魔",   attr:"氷", emoji:"🐺", lv:9,  hp:90,  atk:24, def:13, spd:17, skills:["ブフーラ","咆哮"],     rare:"B" },
+  { id:17, name:"ヴァルキリー",    race:"天使",   attr:"電", emoji:"⚔️", lv:8,  hp:85,  atk:26, def:16, spd:14, skills:["ジオンガ","天剣"],     rare:"B" },
+  { id:18, name:"ナーガ",          race:"幻魔",   attr:"物", emoji:"🌊", lv:6,  hp:65,  atk:17, def:15, spd:8,  skills:["水流","締め付け"],     rare:"B" },
+
+  // ── A ランク（フロア31〜60帯）──
+  { id:9,  name:"アスタロト",      race:"堕天使", attr:"呪", emoji:"👑", lv:12, hp:110, atk:30, def:18, spd:10, skills:["メギド","混乱"],       rare:"A" },
+  { id:10, name:"セラフ",          race:"天使",   attr:"電", emoji:"😇", lv:10, hp:90,  atk:25, def:20, spd:15, skills:["ジオ","回復"],         rare:"A" },
+  { id:19, name:"バアル",          race:"魔王",   attr:"炎", emoji:"🔥", lv:15, hp:140, atk:38, def:20, spd:12, skills:["マハラギオン","支配"],  rare:"A" },
+  { id:20, name:"リリス",          race:"堕天使", attr:"呪", emoji:"🌙", lv:13, hp:120, atk:32, def:15, spd:18, skills:["魅惑の歌","呪詛"],     rare:"A" },
+  { id:21, name:"ガルーダ",        race:"天使",   attr:"電", emoji:"🦅", lv:14, hp:130, atk:35, def:22, spd:20, skills:["天雷","疾風"],         rare:"A" },
+  { id:22, name:"ラミア",          race:"幻魔",   attr:"氷", emoji:"🧊", lv:12, hp:115, atk:28, def:25, spd:10, skills:["ブフダイン","封印眼"],  rare:"A" },
+
+  // ── S ランク（フロア61〜帯）──
+  { id:23, name:"ルシファー",      race:"魔王",   attr:"呪", emoji:"😈", lv:25, hp:220, atk:58, def:35, spd:22, skills:["メギドラ","堕天"],     rare:"S" },
+  { id:24, name:"ミカエル",        race:"天使",   attr:"電", emoji:"✨", lv:22, hp:200, atk:52, def:40, spd:25, skills:["サンダーゲイル","聖剣"],rare:"S" },
+  { id:25, name:"ティアマト",      race:"竜神",   attr:"物", emoji:"🐉", lv:20, hp:250, atk:55, def:45, spd:15, skills:["竜撃","大地震"],       rare:"S" },
+];
 // 属性相性テーブル（攻撃属性 → 防御属性: 倍率）
 const AFFINITY = {
   "炎":{"炎":.5,"氷":2,"電":1,"物":1,"呪":1},
@@ -386,13 +423,47 @@ const AFFINITY = {
   "呪":{"炎":1,"氷":1,"電":1,"物":.5,"呪":.5},
 };
 
-// 合体テーブル（種族A+種族B → 生成悪魔ID）— Phase 4 で拡充予定
+// 合体テーブル（種族A+種族B → 生成悪魔ID）
 const FUSION_TABLE = {
-  "妖精+鬼神":7,"妖精+死霊":6,"妖精+堕天使":8,
-  "鬼神+死霊":9,"鬼神+幻魔":10,
-  "死霊+幻魔":9,"死霊+天使":10,"堕天使+天使":10,
+  // 妖精 ×
+  "妖精+鬼神":    7,   // → ケルベロス
+  "妖精+死霊":    6,   // → シャドウ
+  "妖精+堕天使":  8,   // → メデューサ
+  "妖精+幻魔":    14,  // → サキュバス
+  "妖精+天使":    17,  // → ヴァルキリー
+  "妖精+魔王":    19,  // → バアル
+  // 鬼神 ×
+  "鬼神+死霊":    9,   // → アスタロト
+  "鬼神+幻魔":    10,  // → セラフ
+  "鬼神+堕天使":  20,  // → リリス
+  "鬼神+天使":    21,  // → ガルーダ
+  "鬼神+魔王":    23,  // → ルシファー
+  "鬼神+竜神":    25,  // → ティアマト
+  // 死霊 ×
+  "死霊+幻魔":    9,   // → アスタロト
+  "死霊+天使":    10,  // → セラフ
+  "死霊+堕天使":  20,  // → リリス
+  "死霊+魔王":    23,  // → ルシファー
+  "死霊+竜神":    22,  // → ラミア
+  // 堕天使 ×
+  "堕天使+天使":  10,  // → セラフ
+  "堕天使+幻魔":  22,  // → ラミア
+  "堕天使+魔王":  23,  // → ルシファー
+  "堕天使+竜神":  19,  // → バアル
+  // 幻魔 ×
+  "幻魔+天使":    21,  // → ガルーダ
+  "幻魔+魔王":    25,  // → ティアマト
+  "幻魔+竜神":    25,  // → ティアマト
+  // 天使 ×
+  "天使+魔王":    24,  // → ミカエル
+  "天使+竜神":    24,  // → ミカエル
+  // 魔王 ×
+  "魔王+竜神":    23,  // → ルシファー（最上位合体）
+  // 同種族合体（強化）
+  "妖精+妖精":    15,  // → タコマ
+  "鬼神+鬼神":    7,   // → ケルベロス
+  "死霊+死霊":    14,  // → サキュバス
 };
-
 // エリア定義（深度帯）
 const AREAS = [
   {minFloor:1, name:"廃都表層"},{minFloor:11,name:"地下街区"},
@@ -502,6 +573,122 @@ function applyLevelUp(demon){
   demon.maxHp+=rand(3,6);demon.hp=demon.maxHp;
   demon.atk+=rand(1,2);demon.def+=rand(1,2);
 }
+
+
+// ================================================================
+// [BLOCK: SKILL] スキル定義・発動判定・継承
+// 責務: スキルマスター管理・戦闘時発動・合体時継承ルール
+// 将来の分割先: skill.js
+// ================================================================
+const SKILL = {
+
+  // スキルマスター定義
+  // type: attack / heal / buff / debuff / special
+  // power: ダメージ倍率（attackのみ）
+  // attr: 属性（attackのみ）
+  MASTER: {
+    // 攻撃スキル
+    "たたく":      { type:"attack",  attr:"物", power:1.0, desc:"物理攻撃" },
+    "噛みつき":    { type:"attack",  attr:"物", power:1.2, desc:"強めの噛みつき" },
+    "根縛り":      { type:"debuff",  attr:"物", power:0,   desc:"敵の速度を下げる" },
+    "火炎":        { type:"attack",  attr:"炎", power:1.1, desc:"小炎攻撃" },
+    "アギ":        { type:"attack",  attr:"炎", power:1.3, desc:"炎属性攻撃" },
+    "アギラオ":    { type:"attack",  attr:"炎", power:1.8, desc:"中炎攻撃" },
+    "マハラギオン": { type:"attack", attr:"炎", power:2.2, desc:"全体炎攻撃" },
+    "ブフ":        { type:"attack",  attr:"氷", power:1.3, desc:"氷属性攻撃" },
+    "ブフーラ":    { type:"attack",  attr:"氷", power:1.8, desc:"中氷攻撃" },
+    "ブフダイン":  { type:"attack",  attr:"氷", power:2.4, desc:"強氷攻撃" },
+    "ジオ":        { type:"attack",  attr:"電", power:1.3, desc:"電属性攻撃" },
+    "ジオンガ":    { type:"attack",  attr:"電", power:1.8, desc:"中電攻撃" },
+    "サンダーゲイル":{ type:"attack",attr:"電", power:2.5, desc:"雷嵐攻撃" },
+    "稲妻触手":    { type:"attack",  attr:"電", power:1.5, desc:"電気触手攻撃" },
+    "呪い":        { type:"debuff",  attr:"呪", power:0,   desc:"呪いのダメージ" },
+    "呪縛":        { type:"debuff",  attr:"呪", power:0,   desc:"行動を封じる" },
+    "腐敗":        { type:"debuff",  attr:"呪", power:0,   desc:"防御力を下げる" },
+    "メギド":      { type:"attack",  attr:"呪", power:2.0, desc:"万象撃破" },
+    "メギドラ":    { type:"attack",  attr:"呪", power:3.0, desc:"超万象撃破" },
+    "石化眼":      { type:"special", attr:"物", power:0,   desc:"一定確率で石化" },
+    "水流":        { type:"attack",  attr:"物", power:1.3, desc:"水流攻撃" },
+    "締め付け":    { type:"attack",  attr:"物", power:1.5, desc:"締め付けダメージ" },
+    "咆哮":        { type:"debuff",  attr:"物", power:0,   desc:"敵の攻撃を下げる" },
+    "天剣":        { type:"attack",  attr:"電", power:2.0, desc:"神聖な剣撃" },
+    "疾風":        { type:"attack",  attr:"電", power:1.6, desc:"風の一撃" },
+    "天雷":        { type:"attack",  attr:"電", power:2.2, desc:"天空の雷" },
+    "封印眼":      { type:"special", attr:"氷", power:0,   desc:"スキルを封印する" },
+    "支配":        { type:"special", attr:"炎", power:0,   desc:"敵を一時支配" },
+    "魅了":        { type:"debuff",  attr:"呪", power:0,   desc:"敵を魅了し行動不能" },
+    "魅惑の歌":    { type:"debuff",  attr:"呪", power:0,   desc:"全体魅了" },
+    "暗黒":        { type:"attack",  attr:"呪", power:1.4, desc:"闇の一撃" },
+    "呪詛":        { type:"debuff",  attr:"呪", power:0,   desc:"持続ダメージ" },
+    "堕天":        { type:"special", attr:"呪", power:0,   desc:"敵の属性を変える" },
+    "回復":        { type:"heal",    attr:"",   power:0,   desc:"HP回復" },
+    "竜撃":        { type:"attack",  attr:"物", power:2.8, desc:"竜の爪撃" },
+    "大地震":      { type:"attack",  attr:"物", power:2.5, desc:"大地を揺るがす" },
+    "聖剣":        { type:"attack",  attr:"電", power:2.6, desc:"聖なる剣" },
+    "混乱":        { type:"debuff",  attr:"呪", power:0,   desc:"敵を混乱させる" },
+  },
+
+  // スキルを発動してダメージ・効果量を返す
+  // 戻り値: { dmg, msg, effect }
+  activate(attacker, target, skillName) {
+    const s = SKILL.MASTER[skillName];
+    if (!s) return { dmg: 0, msg: `${skillName}（未定義）`, effect: null };
+
+    if (s.type === 'heal') {
+      const amount = Math.floor(attacker.maxHp * 0.3);
+      attacker.hp = Math.min(attacker.maxHp, attacker.hp + amount);
+      return { dmg: 0, msg: `${attacker.name}の「${skillName}」！ HP+${amount}`, effect: 'heal' };
+    }
+
+    if (s.type === 'debuff') {
+      // 簡易実装: 攻撃力を一時的に下げる（次の攻撃に反映）
+      const penalty = Math.floor(target.atk * 0.2);
+      target._debuff = (target._debuff ?? 0) + penalty;
+      target.atk = Math.max(1, target.atk - penalty);
+      return { dmg: 0, msg: `${attacker.name}の「${skillName}」！ ${target.name}弱体化`, effect: 'debuff' };
+    }
+
+    if (s.type === 'special') {
+      if (skillName === '石化眼' || skillName === '封印眼') {
+        const chance = Math.random() < 0.3;
+        return {
+          dmg: 0,
+          msg: chance
+            ? `${attacker.name}の「${skillName}」！ ${target.name}に効果！`
+            : `${attacker.name}の「${skillName}」！ 効果がなかった`,
+          effect: chance ? 'status' : null,
+        };
+      }
+      // その他special: 通常攻撃扱い
+    }
+
+    // attack / special（攻撃系）
+    const base = calcDamage(
+      { ...attacker, attr: s.attr || attacker.attr },
+      target
+    );
+    const dmg = Math.floor(base * (s.power ?? 1.0));
+    target.hp -= dmg;
+    const aff = AFFINITY[s.attr]?.[target.attr] ?? 1;
+    let msg = `${attacker.name}の「${skillName}」！ ${dmg}ダメージ`;
+    if (aff >= 2) msg += '（弱点！）';
+    else if (aff <= 0.5) msg += '（耐性あり）';
+    return { dmg, msg, effect: aff >= 2 ? 'weakness' : null };
+  },
+
+  // 合体時スキル継承: 素材2体のスキルリストからランダムに1個選ぶ
+  // 将来: スキル石によって確定継承させる拡張ポイント
+  inheritSkill(demonA, demonB) {
+    const pool = [...demonA.skills, ...demonB.skills].filter(Boolean);
+    if (!pool.length) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
+  },
+
+  // スキル説明を取得する（UIでのツールチップ用）
+  describe(skillName) {
+    return SKILL.MASTER[skillName]?.desc ?? skillName;
+  },
+};
 
 // ================================================================
 // [BLOCK: SAVE] セーブ・ロード処理
@@ -1017,14 +1204,14 @@ const BATTLE = {
   skill() {
     const e = STATE.currentEnemy, lead = STATE.party.find(d => d.hp > 0);
     if (!lead || !e || !lead.skills.length) return;
-    const dmg = Math.floor(calcDamage(lead, e) * 1.5);
-    e.hp -= dmg;
-    setBattleLog(`${lead.name}の「${lead.skills[0]}」！ ${dmg}ダメージ`);
+    const result = SKILL.activate(lead, e, lead.skills[0]);
+    UI.setBattleLog(result.msg);
     AUDIO.seAttack();
-    ANIM.attackFlash(lead.attr);
-    ANIM.floatDamage(dmg);
-    playEnemyHitAnim();
-    renderEnemyHP();
+    if (result.effect === 'weakness') { AUDIO.seWeakness(); ANIM.weaknessFlash(); }
+    else { ANIM.attackFlash(lead.attr); }
+    if (result.dmg > 0) ANIM.floatDamage(result.dmg, result.effect === 'weakness');
+    if (result.effect === 'heal') { renderPartyBar(); }
+    else { playEnemyHitAnim(); renderEnemyHP(); }
     if (e.hp <= 0) { BATTLE._enemyDefeated(); return; }
     setTimeout(() => BATTLE._enemyAttack(), 600);
   },
@@ -1173,7 +1360,9 @@ const FUSION = {
     STATE.storage = STATE.storage.filter(d => d.uid !== a.uid && d.uid !== b.uid);
     // 結果悪魔を生成しスキル継承
     const result = createDemon(preview.masterId, preview.lv);
-    result.skills = [preview.skill];
+    // スキル継承: SKILLモジュール経由（将来スキル石で確定継承に拡張）
+    const inherited = SKILL.inheritSkill(a, b);
+    result.skills = inherited ? [inherited] : [];
     // パーティ空きがあれば加入、なければ倉庫へ
     if (STATE.party.length < 3) { result.inParty = true; STATE.party.push(result); }
     else { STATE.storage.push(result); }
