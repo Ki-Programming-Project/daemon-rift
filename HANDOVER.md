@@ -7,10 +7,10 @@
 
 ## ■ START HERE
 
-**プロジェクト:** 女神転生世界観のブラウザ向けタップ系RPG。悪魔を仲魔にし、合体で強化しながら廃都の深層へ潜る放置＋育成ゲーム。単一HTMLファイル完結（index.html）、スマートフォン縦持ち最適化。
+**プロジェクト:** 女神転生世界観のブラウザ向けタップ系RPG。悪魔を仲魔にし、合体で強化しながら廃都の深層へ潜る放置＋育成ゲーム。3ファイル構成（index.html / style.css / script.js）、スマートフォン縦持ち最適化。
 
-**現在のバージョン:** v0.4.4  
-**現在の状態:** Phase 5「最終調整・リリース」進行中。アイテムUIが完了し、残タスクは戦闘中アイテム使用・スキーマバージョン更新・リリース準備。
+**現在のバージョン:** v0.4.4
+**現在の状態:** Phase 5「最終調整・リリース」進行中。アイテムUI・スキーマ更新・ファイル分離が完了。残タスクは戦闘中アイテム使用・実機確認のみ。
 
 ---
 
@@ -18,11 +18,15 @@
 
 ### v0.4.4（2026-04-10）
 - **アイテム画面UI実装:** 仲魔一覧画面（screen-party）にタブを追加
-  - `UI.switchPartyTab(tab)` — 仲魔/アイテムタブ切り替え
-  - `UI.renderItemScreen()` — アイテム一覧描画（ITEM.list()使用）
-  - `UI._useItem(itemName)` — 使用処理（ITEM.use() → addLog → saveGame → 再描画）
+  - `UI.switchPartyTab(tab)` / `UI.renderItemScreen()` / `UI._useItem(itemName)` を追加
   - スキル石は「合体時使用」ラベルのみ（使用ボタンなし）
-- CSS追加: `.party-tabs` / `.party-tab` / `.item-card` 等
+- **バグ修正:** `_enemyAttack()` 御札判定をダメージ適用前に移動
+- **バグ修正:** `startNewGame()` に `items:{}` リセットを追加
+- **SAVE_SCHEMA_VERSION を 2 に更新:** `loadGame()` に `showToast()` 通知を追加
+- **バージョン番号3箇所同期:** コメントヘッダー / metaタグ / APP_VERSION
+- **index.html CHANGELOG 最小化:** 詳細履歴を tasks.md に統合
+- **style.css 分離:** `<style>` を外部ファイルに分離（内容は無変更）
+- **script.js 分離:** `<script>` を外部ファイルに分離（内容は無変更・`defer` 付き）
 
 ### v0.4.3（2026-03-20）
 - ITEMモジュール追加（6種: 回復薬/万能薬/スキル石/覚醒の書/マッカ袋/守りの御札）
@@ -47,17 +51,8 @@ ITEM.use('回復薬', STATE.party.find(d => d.hp > 0))  // → {ok, msg}
 ITEM.count('守りの御札')  // → 数値（ボタンのdisabled判定に使用）
 ```
 
-### 2. SAVE_SCHEMA_VERSION を 2 に更新（優先度: 中）
-```javascript
-// index.html 855行付近（[BLOCK: SAVE]内）
-const SAVE_SCHEMA_VERSION = 2;  // 1 → 2
-```
-⚠️ これを実行すると旧セーブデータは自動破棄される（`loadGame()` に実装済み）。
-
-### 3. リリース準備（優先度: 中）
-- GitHub Pages デプロイ確認
-- iOS Safari / Android Chrome 実機確認
-- ゲームタイトル最終決定（仮: DAEMON RIFT）
+### 2. スマートフォン実機動作確認（優先度: 中）
+iOS Safari / Android Chrome で探索・戦闘・合体・アイテム使用・セーブ・ロードを通し確認する。
 
 ---
 
@@ -95,9 +90,9 @@ const SAVE_SCHEMA_VERSION = 2;  // 1 → 2
 
 ## ■ 設計上の制約
 
-- **1ファイル完結** が最重要制約。外部ファイル・CDN依存禁止
+- **3ファイル構成:** index.html / style.css / script.js。追加の外部ファイル・CDN依存禁止
 - **STATE はオブジェクト参照渡し** のため party/storage 要素は直接変更可能。意図しない副作用に注意
-- **バージョン番号は3箇所同期:** コメントヘッダー / `<meta name="version">` / `APP_VERSION`
+- **バージョン番号は3箇所同期:** index.html コメントヘッダー / `<meta name="version">` / `APP_VERSION`（script.js内）
 
 ---
 
@@ -115,8 +110,8 @@ const SAVE_SCHEMA_VERSION = 2;  // 1 → 2
 ## ■ 主要定数・設定値
 
 ```javascript
-APP_VERSION          = '0.4.4'
-SAVE_SCHEMA_VERSION  = 1      // ⚠ itemsフィールド追加後も未更新（次タスク）
+APP_VERSION          = '0.4.4'   // script.js [BLOCK: META]
+SAVE_SCHEMA_VERSION  = 2         // script.js [BLOCK: SAVE]
 LS_KEY_SAVE          = 'daemonrift_save'
 LS_KEY_BEST          = 'daemonrift_best'
 探索間隔              = 2000ms (setInterval)
@@ -147,12 +142,13 @@ LS_KEY_BEST          = 'daemonrift_best'
 以下の引き継ぎ内容を前提に、DAEMON RIFTの開発を継続してください。
 
 【プロジェクト】
-ブラウザ向けタップ系RPG「DAEMON RIFT」の単一HTMLファイル開発。
+ブラウザ向けタップ系RPG「DAEMON RIFT」。
 女神転生世界観・悪魔合体・放置探索。スマホ縦持ち最適化。
+ファイル構成: index.html / style.css / script.js（3ファイル構成）
 
-【現在のバージョン】v0.4.4（index.html）
+【現在のバージョン】v0.4.4
 
-【実装済みモジュール（コード内ブロック順）】
+【実装済みモジュール（script.js内ブロック順）】
 META / DATA / STATE / UTIL / ENGINE / SKILL / ITEM / SAVE / UI / AUDIO / ANIM / BATTLE / FUSION / G(コントローラ)
 
 【最優先タスク】
@@ -160,12 +156,12 @@ META / DATA / STATE / UTIL / ENGINE / SKILL / ITEM / SAVE / UI / AUDIO / ANIM / 
 
 【次の優先順位】
 1. 戦闘中アイテム使用ボタン追加
-2. SAVE_SCHEMA_VERSION を 1→2 に更新
-3. リリース準備（GitHub Pagesデプロイ・実機確認）
+2. スマートフォン実機動作確認（iOS Safari / Android Chrome）
+3. リリース準備（GitHub Pagesデプロイ）
 
 【重要な制約】
-- 1ファイル完結（外部ファイル禁止）
-- バージョン番号はコメントヘッダー・metaタグ・APP_VERSION定数の3箇所を同期
+- 3ファイル構成維持（index.html / style.css / script.js）。追加ファイル禁止
+- バージョン番号はindex.htmlコメントヘッダー・metaタグ・script.js APP_VERSION定数の3箇所を同期
 - SAVE_KEYSにフィールド追加時は必ず配列に追記
 - UIオブジェクトと同名のグローバル関数を定義しないこと
 - 変更は既存機能を壊さない最小差分を原則とする

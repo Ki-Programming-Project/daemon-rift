@@ -20,8 +20,8 @@
 | 状態 | タスク | 備考 |
 |------|--------|------|
 | ✅ | アイテム画面UI実装 | v0.4.4で完了。仲魔画面にタブ追加 |
+| ✅ | SAVE_SCHEMA_VERSION を 1→2 に更新 | v0.4.4で完了。showToast通知も追加 |
 | ⬜ | 戦闘中アイテム使用ボタン追加 | 戦闘画面に「アイテム」ボタン。回復薬・御札対象 |
-| ⬜ | SAVE_SCHEMA_VERSION を 1→2 に更新 | `items` フィールド追加に伴うスキーマ変更。旧セーブは自動破棄される |
 
 ### 優先度2 — リリース準備
 
@@ -52,27 +52,86 @@
 
 ---
 
-## ■ バージョン履歴（Phase 4〜）
+## ■ バージョン履歴（全バージョン）
+
+> index.html のコメントヘッダーには最新バージョンと日付のみ記載。詳細履歴はこのファイルで管理。
 
 ### v0.4.4（2026-04-10）
 - アイテム画面UI実装（仲魔画面にタブ追加）
   - `UI.switchPartyTab()` / `UI.renderItemScreen()` / `UI._useItem()` を追加
   - CSSにタブ・アイテムカードスタイルを追加
+- バグ修正: `_enemyAttack()` 御札判定をダメージ適用前に修正
+- バグ修正: `startNewGame()` に `items:{}` リセットを追加
+- `SAVE_SCHEMA_VERSION` を 1→2 に更新（items追加に伴うスキーマ変更）
+- `loadGame()` スキーマ不一致時に `showToast()` でユーザー通知を追加
+- バージョン番号3箇所同期（コメントヘッダー / metaタグ / APP_VERSION）
+- index.html CHANGELOG を最小化（最新バージョン+日付のみ残存）。詳細履歴を tasks.md に統合
+- `<style>` を style.css に分離。`<link rel="stylesheet">` で読み込みに変更
+- `<script>` を script.js に分離。`<script defer>` で読み込みに変更
 
 ### v0.4.3（2026-03-20）
-- ITEMモジュール追加（6種定義・ドロップ・使用効果）
-- SAVE_KEYSに `items` 追加
+- ITEMモジュール追加（6種: 回復薬/万能薬/スキル石/覚醒の書/マッカ袋/守りの御札）
+  - `tryDrop()`: 探索自動討伐時にフロア依存確率でドロップ（8〜20%）
+  - `use()`: アイテム使用効果の適用（スキル石・御札はフラグ管理）
+- SAVE_KEYSに `items` 追加（セーブ対象）
 - STATEに `_skillStoneActive` / `_guardActive` フラグ追加
+- `FUSION.execute()` にスキル石による確定継承を統合
+- `BATTLE._enemyAttack()` に守りの御札による無効化を統合
 
 ### v0.4.2（2026-03-20）
 - バランス調整
-  - 敵スケール: 線形 → 対数（`1+Math.log1p(floor-1)*0.45`）
-  - ボス倍率: 2.5× → 1.9×
-  - 防御係数: 0.4 → 0.5
+  - `spawnEnemy`: 線形スケール → 対数スケール（`1+Math.log1p(floor-1)*0.45`）
+  - 敵スケール係数: 0.35 → 0.45 / ボス倍率: 2.5× → 1.9×
+  - `calcDamage`: 防御係数 0.4 → 0.5
+  - ピクシー初期ステータス強化（F1勝率18% → 68%）
+  - LvUP時HP回復量増加（3-6 → 5-10）
 
 ### v0.4.1（2026-03-20）
-- 悪魔25体・合体30パターン
-- SKILLモジュール追加（37スキル）
+- SKILLモジュール追加（37スキル: attack/heal/buff/debuff/special）
+  - `SKILL.activate()`: 発動・ダメージ計算・属性相性・デバフ処理
+  - `SKILL.inheritSkill()`: 合体時スキル継承
+  - `SKILL.describe()`: UIツールチップ用説明取得
+- `BATTLE.skill()` を `SKILL.activate()` 経由に統一
+- `FUSION.execute()` のスキル継承を `SKILL.inheritSkill()` 経由に統一
+
+### v0.4.0（2026-03-20）
+- 悪魔データ拡充: 10体 → 25体（C/B/A/Sランク）
+- 種族追加: 竜神 / 魔王
+- 合体テーブル拡充: 8 → 30パターン（同種族合体・上位合体含む）
+
+### v0.3.3（2026-03-20）
+- AUDIOモジュール追加（Web Audio API 手続き型生成）
+  - BGM: 探索（ドローン）/ 戦闘（通常・ボス）
+  - SE: 攻撃・被ダメ・弱点・逃走・交渉成功・レベルアップ・合体・全滅・階層上昇
+  - ミュートトグル（localStorage保存）
+- ANIMモジュール追加（CSS エフェクト）
+  - 画面遷移フェードイン・属性カラーフラッシュ・弱点フラッシュ
+  - ダメージ数値フロート・レベルアップバナー・合体演出・シェイク
+  - keyframes追加（floatUp / bannerPop / fusionSpin / fadeIn / shake）
+
+### v0.3.2（2026-03-20）
+- UIモジュール（UIオブジェクト）をグローバル関数群から独立分離
+- グローバル関数はUI.xxxへの後方互換ラッパーとして残置
+
+### v0.3.1（2026-03-20）
+- FUSIONモジュールをGから独立分離（selectSlot / selectDemon / execute / toggleParty）
+
+### v0.3.0（2026-03-20）
+- BATTLEモジュールをGから独立分離（open / attack / skill / flee / negotiate 等）
+
+### v0.2.1（2026-03-20）
+- SAVEブロックに `SAVE_SCHEMA_VERSION` を導入
+- `loadGame()` でスキーマ不一致時に旧データを安全破棄するバリデーション追加
+- `saveGame()` の保存データに `_sv` フィールドを付与
+
+### v0.2.0（2026-03-20）
+- バージョン管理をコメントヘッダー / metaタグ / タイトル画面に統合
+- STATEを SAVE_KEYS（保存対象）とランタイムに明示分離
+- JSを責務別ブロック（DATA/UTIL/ENGINE/SAVE/UI/CONTROLLER）に再編
+- 定数（AFFINITY/FUSION_TABLE/AREAS）をDATAブロックへ集約
+
+### v0.1.0（2026-03-20）
+- プロトタイプ初版
 
 ---
 
