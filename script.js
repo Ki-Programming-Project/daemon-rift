@@ -126,6 +126,7 @@ const STATE = {
   inBattle:false, currentEnemy:null,
   fusionSlot:null, fusionA:null, fusionB:null,
   _skillStoneActive:false, _guardActive:false,
+  _pendingBonus:0, // ISS-009: _checkGameOver()でのみセット・startNewGame()で消費（RUNTIME）
 };
 
 // ================================================================
@@ -1132,8 +1133,9 @@ const BATTLE = {
     if (!STATE.party.every(d => d.hp <= 0)) return;
     clearInterval(STATE.exploreTimer);
     STATE.inBattle = STATE.exploring = false;
-    // ISS-009: ゲームオーバー確定時に引継マッカを計算して保存
+    // ISS-009: legacyMacca を計算してから saveGame() を呼ぶこと（順序厳守）
     STATE.legacyMacca = calcLegacyBonus(STATE.bestFloor);
+    STATE._pendingBonus = STATE.legacyMacca; // ゲームオーバー経由のみ引継を許可するフラグ
     saveGame();
     AUDIO.seDefeat();
     AUDIO.stopBgm();
@@ -1283,11 +1285,11 @@ const G={
 
   startNewGame(){
     clearInterval(STATE.exploreTimer);
-    // ISS-009: legacyMacca を退避（Object.assign で上書きされる前に保持）
-    const bonus = STATE.legacyMacca ?? 0;
+    // ISS-009: _checkGameOver()経由のみ引継を適用（タイトル経由・continueGame後は0）
+    const bonus = STATE._pendingBonus;
     Object.assign(STATE,{floor:1,macca:100,kills:0,fusions:0,bestFloor:1,
       floorProgress:0,exploring:false,exploreTimer:null,
-      party:[],storage:[],fusionA:null,fusionB:null,items:{},legacyMacca:0});
+      party:[],storage:[],fusionA:null,fusionB:null,items:{},legacyMacca:0,_pendingBonus:0});
     // ISS-009: 引継マッカを初期マッカに加算
     STATE.macca += bonus;
     const s=createDemon(1,1);s.inParty=true;
